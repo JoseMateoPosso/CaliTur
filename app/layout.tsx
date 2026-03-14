@@ -23,11 +23,40 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        {children}
+    <html lang="es">
+      <body className="bg-gray-50 text-gray-900 antialiased flex flex-col min-h-screen">
+
+        {/* === NAVBAR GLOBAL === */}
+        <header className="bg-white shadow-sm sticky top-0 z-50">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            {/* Logo */}
+            <div className="flex items-center gap-2 cursor-pointer">
+              <span className="text-2xl">🌴</span>
+              <span className={`text-xl font-bold text-blue-600 ${geistSans.variable} font-sans` }>CaliTur</span>
+            </div>
+
+            {/* Enlaces de Navegación */}
+            <nav className="flex gap-6 font-medium text-gray-600">
+              <a href="/" className="hover:text-blue-600 transition-colors">Inicio</a>
+              <a href="#" className="hover:text-blue-600 transition-colors">Explorar</a>
+              {/* Este botón nos servirá en el futuro para ir al Dashboard */}
+              <a href="/login" className="bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 transition-colors">
+                Ingresar
+              </a>
+            </nav>
+          </div>
+        </header>
+
+        {/* === CONTENIDO PRINCIPAL (Aquí entra page.tsx) === */}
+        <main className="flex-grow">
+          {children}
+        </main>
+
+        {/* === FOOTER GLOBAL === */}
+        <footer className="bg-gray-900 text-gray-400 py-8 text-center">
+          <p>© {new Date().getFullYear()} CaliTur. Construido con Next.js y NestJS.</p>
+        </footer>
+
       </body>
     </html>
   );
