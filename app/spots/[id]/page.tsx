@@ -1,4 +1,5 @@
 import Link from "next/link";
+import InteractiveRating from "../../components/InteractiveRating";
 
 // La misma interfaz de nuestros datos
 interface TouristSpot {
@@ -62,6 +63,7 @@ export default async function SpotDetailsPage({
                     <p className="text-lg text-gray-600 leading-relaxed mb-8 whitespace-pre-line">
                         {spot.description}
                     </p>
+                    <InteractiveRating spotId={spot.id} />
 
                     <Link
                         href="/"

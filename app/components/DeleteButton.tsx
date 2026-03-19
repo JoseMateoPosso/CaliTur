@@ -16,7 +16,7 @@ export default function DeleteButton({ id, name }: { id: number; name: string })
         setIsDeleting(true);
 
         try {
-            // Extraemos la manilla VIP (Token)
+            // Extraemos el token de autenticación del cookie (si existe)
             const cookieRow = document.cookie
                 .split("; ")
                 .find((row) => row.startsWith("calitur_token="));
