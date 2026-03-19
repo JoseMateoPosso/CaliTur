@@ -7,31 +7,51 @@ export default function SearchBar() {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    // Leemos si ya hay una búsqueda en la URL para que el input no empiece vacío
     const defaultSearch = searchParams.get("search") || "";
     const [searchTerm, setSearchTerm] = useState(defaultSearch);
 
     const handleSearch = (e: React.FormEvent) => {
         e.preventDefault();
         if (searchTerm.trim() === "") {
-            router.push("/"); // Si está vacío, limpiamos la URL
+            router.push("/");
         } else {
-            router.push(`/?search=${searchTerm}`); // Si hay texto, lo ponemos en la URL
+            router.push(`/?search=${searchTerm}`);
         }
     };
 
     return (
-        <form onSubmit={handleSearch} className="max-w-2xl mx-auto mb-10 flex gap-2">
-            <input
-                type="text"
-                placeholder="Ej: Gato del Río, Cristo Rey, San Antonio..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full text-black px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm"
-            />
+        <form
+            onSubmit={handleSearch}
+            className="w-full flex gap-2"
+            style={{ fontFamily: "sans-serif" }}
+        >
+            <div className="relative flex-1">
+                {/* Ícono lupa */}
+                <span className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40 text-base pointer-events-none">
+                    🔍
+                </span>
+                <input
+                    type="text"
+                    placeholder="Busca: Gato del Río, Cristo Rey, San Antonio..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3.5 rounded-full bg-white/10 border border-white/20 text-white placeholder-white/40 focus:outline-none focus:ring-2 focus:ring-[#f59e0b]/60 focus:border-[#f59e0b]/60 text-sm transition-all"
+                />
+                {/* Botón limpiar */}
+                {searchTerm && (
+                    <button
+                        type="button"
+                        onClick={() => { setSearchTerm(""); router.push("/"); }}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 hover:text-white transition-colors text-lg leading-none"
+                        aria-label="Limpiar búsqueda"
+                    >
+                        ×
+                    </button>
+                )}
+            </div>
             <button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors shadow-sm"
+                className="bg-[#c0392b] hover:bg-[#a93226] text-white px-6 py-3.5 rounded-full font-semibold text-sm transition-colors shadow-sm shrink-0"
             >
                 Buscar
             </button>

@@ -8,15 +8,14 @@ export default function DeleteButton({ id, name }: { id: number; name: string })
     const router = useRouter();
 
     const handleDelete = async () => {
-        // Pregunta de confirmación súper clara para evitar clicks accidentales
-        const confirmacion = window.confirm(`⚠️ ¿Estás totalmente seguro de que deseas eliminar "${name}"? Esta acción no se puede deshacer.`);
-
+        const confirmacion = window.confirm(
+            `⚠️ ¿Estás seguro de que deseas eliminar "${name}"? Esta acción no se puede deshacer.`
+        );
         if (!confirmacion) return;
 
         setIsDeleting(true);
 
         try {
-            // Extraemos el token de autenticación del cookie (si existe)
             const cookieRow = document.cookie
                 .split("; ")
                 .find((row) => row.startsWith("calitur_token="));
@@ -24,21 +23,14 @@ export default function DeleteButton({ id, name }: { id: number; name: string })
 
             if (!token) throw new Error("No estás autorizado.");
 
-            // Disparamos el misil (Petición DELETE)
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tourist-spots/${id}`, {
                 method: "DELETE",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                },
+                headers: { Authorization: `Bearer ${token}` },
             });
 
-            if (!res.ok) {
-                throw new Error("No se pudo eliminar el sitio.");
-            }
+            if (!res.ok) throw new Error("No se pudo eliminar el sitio.");
 
-            // Recargamos la tabla en el servidor para que el sitio desaparezca
             router.refresh();
-
         } catch (error: any) {
             alert(error.message || "Ocurrió un error al intentar eliminar.");
         } finally {
@@ -50,9 +42,17 @@ export default function DeleteButton({ id, name }: { id: number; name: string })
         <button
             onClick={handleDelete}
             disabled={isDeleting}
-            className="text-red-600 hover:text-red-900 transition-colors px-3 py-1 bg-red-50 hover:bg-red-100 rounded-md font-medium disabled:opacity-50"
+            className="text-[#c0392b] hover:text-white transition-all px-3 py-1.5 bg-[#fff5f5] hover:bg-[#c0392b] border border-[#fde8e8] hover:border-[#c0392b] rounded-lg text-xs font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ fontFamily: "sans-serif" }}
         >
-            {isDeleting ? "Borrando..." : "Eliminar"}
+            {isDeleting ? (
+                <span className="flex items-center gap-1.5">
+                    <span className="inline-block w-3 h-3 border-2 border-[#c0392b]/30 border-t-[#c0392b] rounded-full animate-spin" />
+                    Eliminando...
+                </span>
+            ) : (
+                "Eliminar"
+            )}
         </button>
     );
 }

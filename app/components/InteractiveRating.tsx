@@ -5,23 +5,19 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 export default function InteractiveRating({ spotId }: { spotId: number }) {
-    console.log("Rendering InteractiveRating for spotId:", spotId); // Debugging line
-
-    // Estados para construir el JSON de tu curl
     const [rating, setRating] = useState(0);
     const [text, setText] = useState("");
-
-    // Estados de la interfaz
     const [hover, setHover] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
-    const [message, setMessage] = useState("");
+    const [message, setMessage] = useState<{ type: "success" | "error" | "warn"; text: string } | null>(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
 
     const router = useRouter();
 
-    // Verificamos si el usuario tiene su Token JWT (está logueado)
     useEffect(() => {
-        const cookieRow = document.cookie.split("; ").find((row) => row.startsWith("calitur_token="));
+        const cookieRow = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("calitur_token="));
         if (cookieRow) setIsLoggedIn(true);
     }, []);
 
@@ -30,25 +26,21 @@ export default function InteractiveRating({ spotId }: { spotId: number }) {
         if (!isLoggedIn) return;
 
         if (rating === 0) {
-            setMessage("Please select a star rating! ⭐");
+            setMessage({ type: "warn", text: "Selecciona una calificación de estrellas para continuar." });
             return;
         }
 
         setIsSubmitting(true);
-        setMessage("");
+        setMessage(null);
 
         try {
-            const cookieRow = document.cookie.split("; ").find((row) => row.startsWith("calitur_token="));
+            const cookieRow = document.cookie
+                .split("; ")
+                .find((row) => row.startsWith("calitur_token="));
             const token = cookieRow ? cookieRow.split("=")[1] : null;
 
-            // Armamos el body EXACTAMENTE como pide tu curl
-            const payload = {
-                text: text,
-                rating: rating,
-                spotId: spotId
-            };
+            const payload = { text, rating, spotId };
 
-            // Disparamos al endpoint (agregamos el token por seguridad)
             const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/reviews/`, {
                 method: "POST",
                 headers: {
@@ -60,84 +52,149 @@ export default function InteractiveRating({ spotId }: { spotId: number }) {
 
             if (!res.ok) {
                 const errData = await res.json();
-                throw new Error(errData.message || "Failed to submit review");
+                throw new Error(errData.message || "Error al enviar la reseña.");
             }
 
-            setMessage("Thanks for your review! 🌟");
-            // Limpiamos el formulario después del éxito
+            setMessage({ type: "success", text: "¡Gracias por tu reseña! Tu opinión ayuda a otros viajeros." });
             setRating(0);
             setText("");
             router.refresh();
-
         } catch (error: any) {
-            setMessage(error.message || "An error occurred while rating.");
+            setMessage({ type: "error", text: error.message || "Ocurrió un error al enviar tu reseña." });
         } finally {
             setIsSubmitting(false);
         }
     };
 
+    const etiquetasEstrellas = ["", "Malo", "Regular", "Bueno", "Muy bueno", "Excelente"];
+
     return (
-        <div className="mt-8 bg-gray-50 p-6 rounded-xl border border-gray-100">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Leave a Review</h3>
-
-            {!isLoggedIn ? (
-                <p className="text-sm text-gray-600 bg-white p-4 rounded-lg border border-gray-200 inline-block">
-                    You must <Link href="/login" className="text-blue-600 font-bold hover:underline">log in</Link> or <Link href="/register" className="text-blue-600 font-bold hover:underline">sign up</Link> to leave a review.
+        <div
+            className="mt-8 bg-white rounded-3xl border border-[#fde8e8] overflow-hidden shadow-sm"
+            style={{ fontFamily: "sans-serif" }}
+        >
+            {/* Encabezado */}
+            <div className="bg-gradient-to-r from-[#c0392b] to-[#e57373] px-7 py-5">
+                <h3 className="text-white font-bold text-lg">Deja tu reseña</h3>
+                <p className="text-white/70 text-sm mt-0.5">
+                    ¿Visitaste este lugar? Comparte tu experiencia
                 </p>
-            ) : (
-                <form onSubmit={handleSubmitReview} className="space-y-4">
+            </div>
 
-                    {/* Selector de Estrellas */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Rating</label>
-                        <div className="flex items-center gap-2">
-                            {[1, 2, 3, 4, 5].map((star) => (
-                                <button
-                                    key={star}
-                                    type="button"
-                                    disabled={isSubmitting}
-                                    className="text-3xl transition-transform cursor-pointer hover:scale-110"
-                                    onMouseEnter={() => setHover(star)}
-                                    onMouseLeave={() => setHover(0)}
-                                    onClick={() => setRating(star)}
-                                >
-                                    <span className={`${star <= (hover || rating) ? "text-yellow-400" : "text-gray-300"}`}>★</span>
-                                </button>
-                            ))}
+            <div className="px-7 py-6">
+                {!isLoggedIn ? (
+                    <div className="flex items-start gap-4 bg-[#fff5f5] border border-[#fde8e8] rounded-2xl p-5">
+                        <span className="text-2xl mt-0.5">🔒</span>
+                        <div>
+                            <p className="text-[#1c1917] font-semibold text-sm mb-1">
+                                Inicia sesión para dejar una reseña
+                            </p>
+                            <p className="text-[#7c3a2e] text-sm">
+                                <Link href="/login" className="text-[#c0392b] font-bold hover:underline">
+                                    Iniciar sesión
+                                </Link>{" "}
+                                o{" "}
+                                <Link href="/register" className="text-[#c0392b] font-bold hover:underline">
+                                    Registrarse
+                                </Link>{" "}
+                                para compartir tu experiencia.
+                            </p>
                         </div>
                     </div>
+                ) : (
+                    <form onSubmit={handleSubmitReview} className="space-y-5">
 
-                    {/* Campo de Texto para el Comentario */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Your comment</label>
-                        <textarea
-                            required
-                            rows={3}
-                            value={text}
-                            onChange={(e) => setText(e.target.value)}
+                        {/* Selector de estrellas */}
+                        <div>
+                            <label className="block text-sm font-semibold text-[#1c1917] mb-3">
+                                Calificación
+                            </label>
+                            <div className="flex items-center gap-1">
+                                {[1, 2, 3, 4, 5].map((star) => (
+                                    <button
+                                        key={star}
+                                        type="button"
+                                        disabled={isSubmitting}
+                                        className="transition-transform hover:scale-125 focus:outline-none disabled:cursor-not-allowed"
+                                        onMouseEnter={() => setHover(star)}
+                                        onMouseLeave={() => setHover(0)}
+                                        onClick={() => setRating(star)}
+                                        aria-label={`${star} estrellas`}
+                                    >
+                                        <span
+                                            className="text-4xl leading-none"
+                                            style={{
+                                                color: star <= (hover || rating) ? "#f59e0b" : "#e5e7eb",
+                                                transition: "color 0.15s ease",
+                                            }}
+                                        >
+                                            ★
+                                        </span>
+                                    </button>
+                                ))}
+                                {(hover || rating) > 0 && (
+                                    <span className="ml-3 text-sm text-[#7c3a2e] font-medium">
+                                        {etiquetasEstrellas[hover || rating]}
+                                    </span>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Comentario */}
+                        <div>
+                            <label className="block text-sm font-semibold text-[#1c1917] mb-2">
+                                Tu comentario
+                            </label>
+                            <textarea
+                                required
+                                rows={4}
+                                value={text}
+                                onChange={(e) => setText(e.target.value)}
+                                disabled={isSubmitting}
+                                placeholder="Cuéntanos cómo fue tu experiencia visitando este lugar..."
+                                className="w-full px-4 py-3 rounded-xl border border-[#fde8e8] bg-[#fff9f9] text-[#1c1917] placeholder-[#c4908a] focus:ring-2 focus:ring-[#c0392b]/30 focus:border-[#c0392b] outline-none resize-none disabled:opacity-60 text-sm transition-all"
+                            />
+                            <p className="text-xs text-[#c4908a] mt-1 text-right">
+                                {text.length} caracteres
+                            </p>
+                        </div>
+
+                        {/* Botón enviar */}
+                        <button
+                            type="submit"
                             disabled={isSubmitting}
-                            placeholder="Tell us about your experience..."
-                            className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-500 outline-none resize-none disabled:bg-gray-100"
-                        />
-                    </div>
+                            className="w-full sm:w-auto px-8 py-3 bg-[#c0392b] hover:bg-[#a93226] disabled:bg-[#e57373] text-white font-semibold rounded-full transition-colors duration-200 text-sm shadow-sm"
+                        >
+                            {isSubmitting ? (
+                                <span className="flex items-center gap-2 justify-center">
+                                    <span className="inline-block w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    Enviando...
+                                </span>
+                            ) : (
+                                "Publicar reseña"
+                            )}
+                        </button>
 
-                    {/* 3. Botón de Enviar */}
-                    <button
-                        type="submit"
-                        disabled={isSubmitting}
-                        className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg transition-colors disabled:bg-blue-400 shadow-sm"
-                    >
-                        {isSubmitting ? "Submitting..." : "Submit Review"}
-                    </button>
-
-                    {/* Mensaje de éxito o error */}
-                    {message && (
-                        <p className={`mt-2 text-sm font-medium ${message.includes("error") || message.includes("select") ? "text-red-600" : "text-green-600"}`}>
-                            {message}
-                        </p>
-                    )}
-                </form>
-            )}
+                        {/* Mensaje de feedback */}
+                        {message && (
+                            <div
+                                className={`rounded-xl px-4 py-3 text-sm font-medium flex items-start gap-2 ${
+                                    message.type === "success"
+                                        ? "bg-green-50 text-green-800 border border-green-200"
+                                        : message.type === "warn"
+                                        ? "bg-[#fff9e6] text-[#92400e] border border-[#fde68a]"
+                                        : "bg-[#fff5f5] text-[#c0392b] border border-[#fde8e8]"
+                                }`}
+                            >
+                                <span>
+                                    {message.type === "success" ? "✅" : message.type === "warn" ? "⚠️" : "❌"}
+                                </span>
+                                {message.text}
+                            </div>
+                        )}
+                    </form>
+                )}
+            </div>
         </div>
     );
 }

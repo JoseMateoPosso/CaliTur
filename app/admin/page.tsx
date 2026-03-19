@@ -8,107 +8,177 @@ interface TouristSpot {
     imageUrl: string | null;
 }
 
-// Recibimos los searchParams para leer en qué página estamos
-export default async function AdminDashboard({ searchParams }: { searchParams: Promise<{ page?: string }>; }) {
+export default async function AdminDashboard({
+    searchParams,
+}: {
+    searchParams: Promise<{ page?: string }>;
+}) {
     const { page } = await searchParams;
-    // Si no hay página en la URL, asumimos que es la página 1
     const currentPage = page ? parseInt(page, 10) : 1;
 
-    // Le pasamos la página actual a tu API en Render
-    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/tourist-spots?page=${currentPage}`, {
-        cache: "no-store",
-    });
+    const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots?page=${currentPage}`,
+        { cache: "no-store" }
+    );
 
     const paginatedResponse = await res.json();
     const spots: TouristSpot[] = paginatedResponse.data;
-
-    // Extraemos los datos de paginación que nos manda tu Backend
-    const meta = paginatedResponse.meta; // { total, page, lastPage }
+    const meta = paginatedResponse.meta;
 
     return (
-        <div>
-            <div className="flex justify-between items-center mb-8">
-                <h1 className="text-3xl font-bold text-gray-800">
-                    Gestión de Sitios Turísticos
-                </h1>
+        <div style={{ fontFamily: "sans-serif" }}>
+
+            {/* ── ENCABEZADO ── */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div>
+                    <h1 className="text-2xl font-bold text-[#1c1917]">
+                        Gestión de sitios turísticos
+                    </h1>
+                    <p className="text-[#7c3a2e] text-sm mt-0.5">
+                        {meta?.total ?? spots.length} sitios registrados en total
+                    </p>
+                </div>
                 <Link
                     href="/admin/nuevo"
-                    className="bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-6 rounded-lg transition-colors shadow-sm"
+                    className="inline-flex items-center gap-2 bg-[#c0392b] hover:bg-[#a93226] text-white font-semibold py-2.5 px-5 rounded-full transition-colors shadow-sm text-sm shrink-0"
                 >
-                    + Nuevo Sitio
+                    <span className="text-base leading-none">+</span>
+                    Nuevo sitio
                 </Link>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
-                        <tr>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">ID</th>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Imagen</th>
-                            <th className="px-6 py-4 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Nombre</th>
-                            <th className="px-6 py-4 text-center text-xs font-bold text-gray-500 uppercase tracking-wider">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
-                        {spots.map((spot) => (
-                            <tr key={spot.id} className="hover:bg-gray-50 transition-colors">
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">#{spot.id}</td>
-                                <td className="px-6 py-4 whitespace-nowrap">
-                                    {spot.imageUrl ? (
-                                        <img src={spot.imageUrl} alt={spot.name} className="w-12 h-12 rounded-lg object-cover shadow-sm border border-gray-100" />
-                                    ) : (
-                                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center text-[10px] text-gray-400 font-medium border border-gray-200">Sin foto</div>
-                                    )}
-                                </td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-semibold">{spot.name}</td>
-                                <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-center space-x-4">
-                                    <Link
-                                        href={`/admin/editar/${spot.id}`}
-                                        className="text-blue-600 hover:text-blue-900 transition-colors px-3 py-1 bg-blue-50 hover:bg-blue-100 rounded-md font-medium inline-block"
-                                    >
-                                        Editar
-                                    </Link>
-                                    <DeleteButton id={spot.id} name={spot.name} />
-                                </td>
-                            </tr>
-                        ))}
-                    </tbody>
-                </table>
+            {/* ── TABLA ── */}
+            <div className="bg-white rounded-2xl border border-[#fde8e8] overflow-hidden shadow-sm">
 
-                {/* === CONTROLES DE PAGINACIÓN === */}
-                {meta && (
-                    <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 bg-gray-50 gap-4">
-                        <span className="text-sm text-gray-700">
-                            Mostrando página <span className="font-bold">{meta.currentPage}</span> de <span className="font-bold">{meta.lastPage}</span>
-                            {" "}(Total: {meta.total} sitios)
+                {/* Sin datos */}
+                {spots.length === 0 && (
+                    <div className="text-center py-20 text-[#c4908a]">
+                        <span className="text-5xl block mb-3">🗺️</span>
+                        <p className="font-semibold text-[#1c1917]">No hay sitios registrados</p>
+                        <p className="text-sm mt-1">Crea el primero con el botón de arriba.</p>
+                    </div>
+                )}
+
+                {spots.length > 0 && (
+                    <div className="overflow-x-auto">
+                        <table className="min-w-full">
+                            <thead>
+                                <tr className="bg-[#fff5f5] border-b border-[#fde8e8]">
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#c0392b] uppercase tracking-wider">
+                                        ID
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#c0392b] uppercase tracking-wider">
+                                        Imagen
+                                    </th>
+                                    <th className="px-6 py-4 text-left text-xs font-bold text-[#c0392b] uppercase tracking-wider">
+                                        Nombre
+                                    </th>
+                                    <th className="px-6 py-4 text-center text-xs font-bold text-[#c0392b] uppercase tracking-wider">
+                                        Acciones
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody className="divide-y divide-[#fde8e8]">
+                                {spots.map((spot) => (
+                                    <tr
+                                        key={spot.id}
+                                        className="hover:bg-[#fff9f9] transition-colors group"
+                                    >
+                                        {/* ID */}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-xs font-bold text-[#c4908a] bg-[#fff5f5] px-2 py-1 rounded-full">
+                                                #{spot.id}
+                                            </span>
+                                        </td>
+
+                                        {/* Imagen */}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            {spot.imageUrl ? (
+                                                <img
+                                                    src={spot.imageUrl}
+                                                    alt={spot.name}
+                                                    className="w-12 h-12 rounded-xl object-cover border border-[#fde8e8] shadow-sm"
+                                                />
+                                            ) : (
+                                                <div className="w-12 h-12 rounded-xl bg-[#fff5f5] border border-[#fde8e8] flex items-center justify-center text-[10px] text-[#c4908a] font-medium">
+                                                    📷
+                                                </div>
+                                            )}
+                                        </td>
+
+                                        {/* Nombre */}
+                                        <td className="px-6 py-4 whitespace-nowrap">
+                                            <span className="text-sm font-semibold text-[#1c1917] group-hover:text-[#c0392b] transition-colors">
+                                                {spot.name}
+                                            </span>
+                                        </td>
+
+                                        {/* Acciones */}
+                                        <td className="px-6 py-4 whitespace-nowrap text-center">
+                                            <div className="flex items-center justify-center gap-2">
+                                                <Link
+                                                    href={`/spots/${spot.id}`}
+                                                    className="text-[#7c3a2e] hover:text-[#1c1917] transition-colors px-3 py-1.5 bg-[#fff5f5] hover:bg-[#fde8e8] rounded-lg text-xs font-medium"
+                                                >
+                                                    Ver
+                                                </Link>
+                                                <Link
+                                                    href={`/admin/editar/${spot.id}`}
+                                                    className="text-[#f59e0b] hover:text-[#b45309] transition-colors px-3 py-1.5 bg-[#fffbeb] hover:bg-[#fef3c7] rounded-lg text-xs font-medium"
+                                                >
+                                                    Editar
+                                                </Link>
+                                                <DeleteButton id={spot.id} name={spot.name} />
+                                            </div>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                )}
+
+                {/* ── PAGINACIÓN ── */}
+                {meta && meta.lastPage > 1 && (
+                    <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-[#fde8e8] bg-[#fff9f9] gap-3">
+                        <span className="text-xs text-[#7c3a2e]">
+                            Página{" "}
+                            <span className="font-bold text-[#1c1917]">{meta.currentPage}</span>
+                            {" "}de{" "}
+                            <span className="font-bold text-[#1c1917]">{meta.lastPage}</span>
+                            {" "}— {meta.total} sitios en total
                         </span>
 
-                        <div className="flex space-x-2">
-                            {/* Botón Anterior */}
+                        <div className="flex gap-2">
                             {meta.currentPage > 1 ? (
                                 <Link
                                     href={`/admin?page=${meta.currentPage - 1}`}
-                                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                                    className="px-4 py-2 border border-[#fde8e8] rounded-full text-xs font-semibold text-[#1c1917] bg-white hover:bg-[#fff5f5] hover:border-[#c0392b]/30 transition-all"
                                 >
-                                    Anterior
+                                    ← Anterior
                                 </Link>
                             ) : (
-                                <button disabled className="px-4 py-2 border border-gray-200 rounded-md text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-                                    Anterior
+                                <button
+                                    disabled
+                                    className="px-4 py-2 border border-[#fde8e8] rounded-full text-xs font-semibold text-[#c4908a] bg-[#fff9f9] cursor-not-allowed"
+                                >
+                                    ← Anterior
                                 </button>
                             )}
 
-                            {/* Botón Siguiente */}
                             {meta.currentPage < meta.lastPage ? (
                                 <Link
                                     href={`/admin?page=${meta.currentPage + 1}`}
-                                    className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors shadow-sm"
+                                    className="px-4 py-2 border border-[#fde8e8] rounded-full text-xs font-semibold text-[#1c1917] bg-white hover:bg-[#fff5f5] hover:border-[#c0392b]/30 transition-all"
                                 >
-                                    Siguiente
+                                    Siguiente →
                                 </Link>
                             ) : (
-                                <button disabled className="px-4 py-2 border border-gray-200 rounded-md text-sm font-medium text-gray-400 bg-gray-100 cursor-not-allowed">
-                                    Siguiente
+                                <button
+                                    disabled
+                                    className="px-4 py-2 border border-[#fde8e8] rounded-full text-xs font-semibold text-[#c4908a] bg-[#fff9f9] cursor-not-allowed"
+                                >
+                                    Siguiente →
                                 </button>
                             )}
                         </div>
