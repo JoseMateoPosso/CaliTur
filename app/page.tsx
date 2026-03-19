@@ -8,28 +8,49 @@ interface TouristSpot {
   imageUrl: string | null;
 }
 
+interface Meta {
+  total: number;
+  currentPage: number;
+  lastPage: number;
+  limit: number;
+}
+
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string }>;
+  searchParams: Promise<{ search?: string; page?: string }>;
 }) {
-  const { search } = await searchParams;
+  const { search, page } = await searchParams;
+  const currentPage = page ? parseInt(page, 10) : 1;
 
-  let apiUrl = `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots`;
-  if (search) {
-    apiUrl += `?search=${search}`;
-  }
+  // Armamos la URL con todos los parámetros
+  const params = new URLSearchParams();
+  params.set("page", String(currentPage));
+  params.set("limit", "9"); // 3 columnas × 3 filas
+  if (search) params.set("search", search);
 
-  const res = await fetch(apiUrl, { cache: "no-store" });
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots?${params.toString()}`,
+    { cache: "no-store" }
+  );
+
   const paginatedResponse = await res.json();
   const spots: TouristSpot[] = paginatedResponse.data;
+  const meta: Meta | undefined = paginatedResponse.meta;
+
+  // Construye la URL para los links de paginación conservando el search
+  const buildPageUrl = (p: number) => {
+    const q = new URLSearchParams();
+    q.set("page", String(p));
+    if (search) q.set("search", search);
+    return `/?${q.toString()}`;
+  };
 
   return (
     <div className="min-h-screen bg-[#fff5f5]" style={{ fontFamily: "sans-serif" }}>
 
       {/* ── HERO ── */}
       <section className="relative bg-[#1c1917] overflow-hidden">
-        {/* Patrón decorativo de fondo */}
         <div
           className="absolute inset-0 opacity-10"
           style={{
@@ -39,7 +60,6 @@ export default async function Home({
         />
 
         <div className="relative max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28 text-center">
-          {/* Etiqueta superior */}
           <span className="inline-block bg-[#f59e0b]/15 text-[#f59e0b] text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6 border border-[#f59e0b]/30">
             Santiago de Cali, Colombia
           </span>
@@ -54,15 +74,13 @@ export default async function Home({
             Cielo. Cultura, naturaleza, historia y sabor en un solo lugar.
           </p>
 
-          {/* Barra de búsqueda */}
           <div className="max-w-xl mx-auto">
             <SearchBar />
           </div>
 
-          {/* Estadísticas rápidas */}
           <div className="flex items-center justify-center gap-8 mt-12 flex-wrap">
             {[
-              { valor: spots.length.toString(), label: "Sitios turísticos" },
+              { valor: meta ? String(meta.total) : String(spots.length), label: "Sitios turísticos" },
               { valor: "1 ciudad", label: "Santiago de Cali" },
               { valor: "100%", label: "Gratis para explorar" },
             ].map((stat) => (
@@ -83,12 +101,11 @@ export default async function Home({
               Resultados para{" "}
               <span className="text-[#c0392b] font-bold">"{search}"</span>
               {" "}—{" "}
-              <span className="text-[#7c3a2e]">{spots.length} sitio{spots.length !== 1 ? "s" : ""} encontrado{spots.length !== 1 ? "s" : ""}</span>
+              <span className="text-[#7c3a2e]">
+                {meta?.total ?? spots.length} sitio{(meta?.total ?? spots.length) !== 1 ? "s" : ""} encontrado{(meta?.total ?? spots.length) !== 1 ? "s" : ""}
+              </span>
             </span>
-            <Link
-              href="/"
-              className="text-xs text-[#c0392b] hover:underline ml-auto"
-            >
+            <Link href="/" className="text-xs text-[#c0392b] hover:underline ml-auto">
               Limpiar búsqueda ×
             </Link>
           </div>
@@ -102,16 +119,14 @@ export default async function Home({
         {!search && (
           <div className="flex items-center gap-4 mb-8">
             <div>
-              <h2 className="text-2xl font-bold text-[#1c1917]">
-                Todos los sitios
-              </h2>
+              <h2 className="text-2xl font-bold text-[#1c1917]">Todos los sitios</h2>
               <p className="text-[#7c3a2e] text-sm mt-0.5">
                 Haz clic en cualquier lugar para ver más detalles
               </p>
             </div>
             <div className="ml-auto h-px flex-1 bg-[#fde8e8]" />
             <span className="text-[#c0392b] text-sm font-semibold bg-[#fde8e8] px-3 py-1 rounded-full">
-              {spots.length} sitios
+              {meta?.total ?? spots.length} sitios
             </span>
           </div>
         )}
@@ -143,7 +158,6 @@ export default async function Home({
               href={`/spots/${spot.id}`}
               className="group bg-white rounded-2xl overflow-hidden border border-[#fde8e8] hover:border-[#c0392b]/40 hover:shadow-xl transition-all duration-300 flex flex-col"
             >
-              {/* Imagen */}
               <div className="relative overflow-hidden h-52 bg-[#fde8e8]">
                 {spot.imageUrl ? (
                   <img
@@ -157,12 +171,9 @@ export default async function Home({
                     <span className="text-xs">Sin imagen disponible</span>
                   </div>
                 )}
-
-                {/* Overlay sutil al hover */}
                 <div className="absolute inset-0 bg-[#c0392b]/0 group-hover:bg-[#c0392b]/10 transition-colors duration-300" />
               </div>
 
-              {/* Contenido */}
               <div className="p-5 flex flex-col flex-1">
                 <h2 className="text-lg font-bold text-[#1c1917] mb-2 group-hover:text-[#c0392b] transition-colors leading-snug">
                   {spot.name}
@@ -170,8 +181,6 @@ export default async function Home({
                 <p className="text-[#5a3e3b] text-sm leading-relaxed line-clamp-3 flex-1">
                   {spot.description}
                 </p>
-
-                {/* CTA */}
                 <div className="mt-4 flex items-center justify-between">
                   <span className="text-[#c0392b] text-sm font-semibold group-hover:underline">
                     Ver detalles →
@@ -182,6 +191,95 @@ export default async function Home({
             </Link>
           ))}
         </div>
+
+        {/* ── PAGINACIÓN ── */}
+        {meta && meta.lastPage > 1 && (
+          <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
+
+            {/* Info */}
+            <p className="text-sm text-[#7c3a2e]">
+              Página{" "}
+              <span className="font-bold text-[#1c1917]">{meta.currentPage}</span>
+              {" "}de{" "}
+              <span className="font-bold text-[#1c1917]">{meta.lastPage}</span>
+              {" "}— {meta.total} sitios en total
+            </p>
+
+            {/* Controles */}
+            <div className="flex items-center gap-2">
+
+              {/* Anterior */}
+              {meta.currentPage > 1 ? (
+                <Link
+                  href={buildPageUrl(meta.currentPage - 1)}
+                  className="px-4 py-2 rounded-full border border-[#fde8e8] bg-white text-[#1c1917] text-sm font-semibold hover:bg-[#fff5f5] hover:border-[#c0392b]/30 transition-all"
+                >
+                  ← Anterior
+                </Link>
+              ) : (
+                <span className="px-4 py-2 rounded-full border border-[#fde8e8] bg-[#fff9f9] text-[#c4908a] text-sm font-semibold cursor-not-allowed">
+                  ← Anterior
+                </span>
+              )}
+
+              {/* Números de página */}
+              <div className="flex items-center gap-1">
+                {Array.from({ length: meta.lastPage }, (_, i) => i + 1).map((p) => {
+                  const isActive = p === meta.currentPage;
+                  // Mostrar: primera, última, actual y sus vecinas
+                  const show =
+                    p === 1 ||
+                    p === meta.lastPage ||
+                    Math.abs(p - meta.currentPage) <= 1;
+
+                  // Puntos suspensivos
+                  const showDotsBefore =
+                    p === meta.currentPage - 2 && meta.currentPage - 2 > 1;
+                  const showDotsAfter =
+                    p === meta.currentPage + 2 && meta.currentPage + 2 < meta.lastPage;
+
+                  if (showDotsBefore || showDotsAfter) {
+                    return (
+                      <span key={p} className="text-[#c4908a] text-sm px-1">
+                        …
+                      </span>
+                    );
+                  }
+
+                  if (!show) return null;
+
+                  return (
+                    <Link
+                      key={p}
+                      href={buildPageUrl(p)}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
+                        isActive
+                          ? "bg-[#c0392b] text-white shadow-sm"
+                          : "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5] hover:border-[#c0392b]/30"
+                      }`}
+                    >
+                      {p}
+                    </Link>
+                  );
+                })}
+              </div>
+
+              {/* Siguiente */}
+              {meta.currentPage < meta.lastPage ? (
+                <Link
+                  href={buildPageUrl(meta.currentPage + 1)}
+                  className="px-4 py-2 rounded-full border border-[#fde8e8] bg-white text-[#1c1917] text-sm font-semibold hover:bg-[#fff5f5] hover:border-[#c0392b]/30 transition-all"
+                >
+                  Siguiente →
+                </Link>
+              ) : (
+                <span className="px-4 py-2 rounded-full border border-[#fde8e8] bg-[#fff9f9] text-[#c4908a] text-sm font-semibold cursor-not-allowed">
+                  Siguiente →
+                </span>
+              )}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* ── BANNER CTA ── */}

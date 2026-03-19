@@ -28,8 +28,19 @@ export default function LoginPage() {
             if (!res.ok) throw new Error("Credenciales incorrectas");
 
             const data = await res.json();
-            document.cookie = `calitur_token=${data.access_token}; path=/; max-age=86400`;
-            router.push("/admin");
+
+            //Guardamos el Token
+            document.cookie = `calitur_token=${data.access_token}; path=/; max-age=86400; SameSite=Strict`;
+
+            //Guardamos el rol del usuario para el middleware
+            document.cookie = `calitur_role=${data.user.role}; path=/; max-age=86400; SameSite=Strict`;
+
+            // Redirigimos (Validando en MAYÚSCULAS)
+            if (data.user.role === "ADMIN") {
+                router.push("/admin/"); // Asegúrate de que esta sea la ruta correcta de tu admin
+            } else {
+                router.push("/");
+            }
 
         } catch {
             setError("Correo o contraseña incorrectos. ¡Intenta de nuevo!");

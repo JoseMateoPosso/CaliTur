@@ -1,5 +1,7 @@
 import Link from "next/link";
 import InteractiveRating from "../../components/InteractiveRating";
+import MapWrapper from "../../components/MapWrapper";
+import ReviewsList from "../../components/ReviewsList";
 
 interface TouristSpot {
     id: number;
@@ -7,6 +9,8 @@ interface TouristSpot {
     description: string;
     imageUrl: string | null;
     category?: string;
+    latitude?: number | null;
+    longitude?: number | null;
 }
 
 export default async function SpotDetailsPage({
@@ -23,7 +27,10 @@ export default async function SpotDetailsPage({
 
     if (!res.ok) {
         return (
-            <main className="min-h-screen bg-[#fff5f5] flex items-center justify-center px-4" style={{ fontFamily: "sans-serif" }}>
+            <main
+                className="min-h-screen bg-[#fff5f5] flex items-center justify-center px-4"
+                style={{ fontFamily: "sans-serif" }}
+            >
                 <div className="text-center">
                     <span className="text-7xl block mb-4">😢</span>
                     <h1 className="text-3xl font-bold text-[#c0392b] mb-2">
@@ -62,10 +69,8 @@ export default async function SpotDetailsPage({
                     </div>
                 )}
 
-                {/* Overlay degradado */}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
-                {/* Botón volver */}
                 <Link
                     href="/"
                     className="absolute top-6 left-6 bg-white/90 backdrop-blur-sm hover:bg-white text-[#c0392b] font-semibold text-sm py-2 px-5 rounded-full transition-all shadow-md"
@@ -73,7 +78,6 @@ export default async function SpotDetailsPage({
                     ← Inicio
                 </Link>
 
-                {/* Título sobre la imagen */}
                 <div className="absolute bottom-0 left-0 right-0 px-6 pb-10 sm:px-12">
                     {spot.category && (
                         <span className="inline-block bg-[#f59e0b] text-[#1c1917] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-3">
@@ -93,19 +97,37 @@ export default async function SpotDetailsPage({
                 <div className="bg-white rounded-3xl border border-[#fde8e8] p-8 sm:p-12 mb-8 shadow-sm">
                     <div className="flex items-center gap-3 mb-6">
                         <div className="w-1 h-8 bg-[#c0392b] rounded-full" />
-                        <h2 className="text-xl font-bold text-[#1c1917]">
-                            Sobre este lugar
-                        </h2>
+                        <h2 className="text-xl font-bold text-[#1c1917]">Sobre este lugar</h2>
                     </div>
                     <p className="text-[#3d2b29] text-lg leading-relaxed whitespace-pre-line">
                         {spot.description}
                     </p>
                 </div>
 
-                {/* Calificación */}
+                {/* Mapa */}
+                {spot.latitude && spot.longitude ? (
+                    <div className="bg-white rounded-3xl border border-[#fde8e8] p-8 sm:p-12 mb-8 shadow-sm">
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-1 h-8 bg-[#f59e0b] rounded-full" />
+                            <h2 className="text-xl font-bold text-[#1c1917]">📍 Ubicación</h2>
+                        </div>
+                        <div className="h-80 w-full rounded-2xl border border-gray-100 shadow-inner relative z-0 overflow-hidden">
+                            <MapWrapper lat={spot.latitude} lng={spot.longitude} name={spot.name} />
+                        </div>
+                    </div>
+                ) : (
+                    <div className="bg-white/50 border border-[#fde8e8] p-6 rounded-3xl text-[#c4908a] text-sm italic mb-8 text-center shadow-sm">
+                        📍 La ubicación exacta en el mapa aún no está disponible para este sitio.
+                    </div>
+                )}
+
+                {/* Reseñas existentes */}
+                <ReviewsList spotId={spot.id} />
+
+                {/* Formulario nueva reseña */}
                 <InteractiveRating spotId={spot.id} />
 
-                {/* Botón volver al fondo */}
+                {/* Botón volver */}
                 <div className="mt-10 text-center">
                     <Link
                         href="/"

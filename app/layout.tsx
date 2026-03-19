@@ -50,12 +50,6 @@ export default function RootLayout({
                 Inicio
               </Link>
               <Link
-                href="/spots"
-                className="text-white/70 hover:text-white text-sm font-medium px-3 py-2 rounded-lg hover:bg-white/10 transition-all"
-              >
-                Explorar
-              </Link>
-              <Link
                 href="/login"
                 className="ml-2 bg-[#c0392b] hover:bg-[#a93226] text-white text-sm font-semibold px-4 py-2 rounded-full transition-colors"
               >
