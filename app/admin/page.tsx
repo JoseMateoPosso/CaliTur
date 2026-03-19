@@ -8,6 +8,13 @@ interface TouristSpot {
     imageUrl: string | null;
 }
 
+interface Meta {
+    total: number;
+    currentPage: number;
+    lastPage: number;
+    limit: number;
+}
+
 export default async function AdminDashboard({
     searchParams,
 }: {
@@ -16,14 +23,28 @@ export default async function AdminDashboard({
     const { page } = await searchParams;
     const currentPage = page ? parseInt(page, 10) : 1;
 
-    const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots?page=${currentPage}`,
-        { cache: "no-store" }
-    );
+    async function fetchTouristSpots() {
+        try {
+            const res = await fetch(
+                `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots?page=${currentPage}`,
+                { cache: "no-store" }
+            );
 
-    const paginatedResponse = await res.json();
-    const spots: TouristSpot[] = paginatedResponse.data;
-    const meta = paginatedResponse.meta;
+            if (!res.ok) {
+                console.warn("Error al obtener los sitios turísticos:", res.statusText);
+                return [];
+            }
+
+            return await res.json();
+        } catch (error) {
+            console.error("Error de red al obtener los sitios turísticos:", error);
+            return [];
+        }
+    }
+
+    const paginatedResponse = await fetchTouristSpots();
+    const spots: TouristSpot[] = paginatedResponse?.data || [];
+    const meta: Meta | undefined = paginatedResponse?.meta;
 
     return (
         <div style={{ fontFamily: "sans-serif" }}>

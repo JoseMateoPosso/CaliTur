@@ -29,14 +29,28 @@ export default async function Home({
   params.set("limit", "9"); // 3 columnas × 3 filas
   if (search) params.set("search", search);
 
-  const res = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots?${params.toString()}`,
-    { cache: "no-store" }
-  );
+  async function fetchTouristSpots() {
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots/?${params.toString()}`,
+        { cache: "no-store" }
+      );
 
-  const paginatedResponse = await res.json();
-  const spots: TouristSpot[] = paginatedResponse.data;
-  const meta: Meta | undefined = paginatedResponse.meta;
+      if (!res.ok) {
+        console.warn("Error al obtener los sitios turísticos:", res.statusText);
+        return [];
+      }
+
+      return await res.json();
+    } catch (error) {
+      console.error("Error de red al obtener los sitios turísticos:", error);
+      return [];
+    }
+  }
+
+  const paginatedResponse = await fetchTouristSpots();
+  const spots: TouristSpot[] = paginatedResponse?.data || [];
+  const meta: Meta | undefined = paginatedResponse?.meta;
 
   // Construye la URL para los links de paginación conservando el search
   const buildPageUrl = (p: number) => {
@@ -252,11 +266,10 @@ export default async function Home({
                     <Link
                       key={p}
                       href={buildPageUrl(p)}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${
-                        isActive
-                          ? "bg-[#c0392b] text-white shadow-sm"
-                          : "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5] hover:border-[#c0392b]/30"
-                      }`}
+                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${isActive
+                        ? "bg-[#c0392b] text-white shadow-sm"
+                        : "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5] hover:border-[#c0392b]/30"
+                        }`}
                     >
                       {p}
                     </Link>
