@@ -2,7 +2,7 @@ import Link from "next/link";
 import InteractiveRating from "../../components/InteractiveRating";
 import MapWrapper from "../../components/MapWrapper";
 import ReviewsList from "../../components/ReviewsList";
-import {TouristSpot, Category, Meta} from "@/types";
+import { TouristSpot } from "@/types";
 
 export default async function SpotDetailsPage({
     params,

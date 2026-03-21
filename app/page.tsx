@@ -1,6 +1,6 @@
 import Link from "next/link";
 import SearchBar from "./components/SearchBar";
-import {TouristSpot, Category, Meta} from "@/types";
+import { TouristSpot, Category, Meta } from "@/types";
 
 // Diccionario visual constante fuera del componente para no re-renderizarlo
 const categoryIcons: Record<string, string> = {
@@ -246,7 +246,18 @@ export default async function Home({
                   <p className="text-[#5a3e3b] text-sm line-clamp-2 mb-4">{spot.description}</p>
                   <div className="flex items-center justify-between pt-4 border-t border-[#fde8e8]">
                     <span className="text-[#c0392b] text-xs font-bold uppercase tracking-wider">Explorar sitio</span>
-                    <span className="text-[#f59e0b]">★★★★★</span>
+                    <div className="flex items-center gap-1">
+                      <span className="text-[#f59e0b] text-sm">
+                        {/* Si el rating es 0, mostramos estrellas vacías, si no, mostramos la estrella y el número */}
+                        {spot.rating && spot.rating > 0 ? "★" : "☆"}
+                      </span>
+                      <span className="text-[#1c1917] font-bold text-sm">
+                        {spot.rating && spot.rating > 0 ? spot.rating : "Nuevo"}
+                      </span>
+                      <span className="text-[#c4908a] text-xs ml-1">
+                        ({spot.reviewCount || 0})
+                      </span>
+                    </div>
                   </div>
                 </div>
               </Link>

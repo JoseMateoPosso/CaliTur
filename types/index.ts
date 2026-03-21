@@ -15,6 +15,8 @@ export interface TouristSpot {
     price?: number | null;
     schedule?: string | null;
     categories: Category[];
+    rating ?: number | null;
+    reviewCount ?: number | null;
 }
 
 export interface Meta {
