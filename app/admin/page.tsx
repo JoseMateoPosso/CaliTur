@@ -1,28 +1,6 @@
 import Link from "next/link";
 import DeleteButton from "../components/DeleteButton";
-
-interface Category {
-    id: number;
-    name: string;
-    description: string;
-}
-
-interface TouristSpot {
-    id: number;
-    name: string;
-    description: string;
-    latitude: number;
-    longitude: number;
-    imageUrl: string | null;
-    categories: Category[];
-}
-
-interface Meta {
-    total: number;
-    currentPage: number;
-    lastPage: number;
-    limit: number;
-}
+import {TouristSpot, Meta} from "@/types";
 
 export default async function AdminDashboard({
     searchParams,

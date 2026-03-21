@@ -1,28 +1,6 @@
 import Link from "next/link";
 import SearchBar from "./components/SearchBar";
-
-interface Category {
-  id: number;
-  name: string;
-  description?: string;
-}
-
-interface TouristSpot {
-  id: number;
-  name: string;
-  description: string;
-  latitude: number;
-  longitude: number;
-  imageUrl: string | null;
-  categories: Category[];
-}
-
-interface Meta {
-  total: number;
-  currentPage: number;
-  lastPage: number;
-  limit: number;
-}
+import {TouristSpot, Category, Meta} from "@/types";
 
 // Diccionario visual constante fuera del componente para no re-renderizarlo
 const categoryIcons: Record<string, string> = {
