@@ -3,14 +3,20 @@ import InteractiveRating from "../../components/InteractiveRating";
 import MapWrapper from "../../components/MapWrapper";
 import ReviewsList from "../../components/ReviewsList";
 
+interface Category {
+    id: number;
+    name: string;
+    description: string;
+}
+
 interface TouristSpot {
     id: number;
     name: string;
     description: string;
     imageUrl: string | null;
-    category?: string;
     latitude?: number | null;
     longitude?: number | null;
+    categories: Category[];
 }
 
 export default async function SpotDetailsPage({
@@ -79,10 +85,17 @@ export default async function SpotDetailsPage({
                 </Link>
 
                 <div className="absolute bottom-0 left-0 right-0 px-6 pb-10 sm:px-12">
-                    {spot.category && (
-                        <span className="inline-block bg-[#f59e0b] text-[#1c1917] text-xs font-bold uppercase tracking-widest px-3 py-1 rounded-full mb-3">
-                            {spot.category}
-                        </span>
+                    {spot.categories && spot.categories.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-3">
+                            {spot.categories.map((cat) => (
+                                <span
+                                    key={cat.id}
+                                    className="text-xs font-medium bg-[#c0392b]/80 text-white px-3 py-1 rounded-full"
+                                >
+                                    {cat.name}
+                                </span>
+                            ))}
+                        </div>
                     )}
                     <h1 className="text-4xl sm:text-6xl font-bold text-white leading-tight">
                         {spot.name}

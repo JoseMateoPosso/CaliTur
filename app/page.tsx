@@ -1,11 +1,20 @@
 import Link from "next/link";
 import SearchBar from "./components/SearchBar";
 
+interface Category {
+  id: number;
+  name: string;
+  description?: string;
+}
+
 interface TouristSpot {
   id: number;
   name: string;
   description: string;
+  latitude: number;
+  longitude: number;
   imageUrl: string | null;
+  categories: Category[];
 }
 
 interface Meta {
@@ -15,48 +24,98 @@ interface Meta {
   limit: number;
 }
 
+// Diccionario visual constante fuera del componente para no re-renderizarlo
+const categoryIcons: Record<string, string> = {
+  Cultura: "🎭",
+  Naturaleza: "🌿",
+  Gastronomía: "🍲",
+  Historia: "🏛️",
+  "Vida Nocturna": "💃",
+  Aventura: "🧗",
+  default: "📍",
+};
+
 export default async function Home({
   searchParams,
 }: {
-  searchParams: Promise<{ search?: string; page?: string }>;
+  searchParams: Promise<{ search?: string; page?: string; category?: string }>;
 }) {
-  const { search, page } = await searchParams;
+  // Extraemos category (AQUÍ AHORA LLEGA EL ID, ej: "2")
+  const { search, page, category } = await searchParams;
   const currentPage = page ? parseInt(page, 10) : 1;
 
-  // Armamos la URL con todos los parámetros
+  // Construcción segura de Query Params para el Backend
   const params = new URLSearchParams();
   params.set("page", String(currentPage));
-  params.set("limit", "9"); // 3 columnas × 3 filas
+  params.set("limit", "9");
   if (search) params.set("search", search);
+  if (category) params.set("category", category); // Enviamos el ID al backend
 
   async function fetchTouristSpots() {
     try {
       const res = await fetch(
         `${process.env.NEXT_PUBLIC_API_URL}/tourist-spots/?${params.toString()}`,
-        { cache: "no-store" }
+        { cache: "no-store" } // Evita caché estática en listados dinámicos
       );
 
       if (!res.ok) {
-        console.warn("Error al obtener los sitios turísticos:", res.statusText);
-        return [];
+        console.warn("Backend dormido o error de respuesta:", res.statusText);
+        return null;
       }
-
       return await res.json();
     } catch (error) {
-      console.error("Error de red al obtener los sitios turísticos:", error);
+      console.error("Error de red (Backend posiblemente apagado):", error);
+      return null;
+    }
+  }
+
+  async function fetchCategories() {
+    try {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/categories/`, {
+        cache: "no-store"
+      });
+      if (!res.ok) {
+        console.warn("No se pudieron cargar las categorías:", res.statusText);
+        return [];
+      }
+      return await res.json();
+    } catch (error) {
+      console.error("Error de red al cargar categorías:", error);
       return [];
     }
   }
 
-  const paginatedResponse = await fetchTouristSpots();
+  // Promise.all para reducir el tiempo de carga a la mitad (Paralelismo)
+  const [paginatedResponse, dynamicCategories] = await Promise.all([
+    fetchTouristSpots(),
+    fetchCategories(),
+  ]);
+
+  // Paracaídas de seguridad ante caídas del servidor
   const spots: TouristSpot[] = paginatedResponse?.data || [];
   const meta: Meta | undefined = paginatedResponse?.meta;
+  const categories: Category[] = dynamicCategories || [];
 
-  // Construye la URL para los links de paginación conservando el search
-  const buildPageUrl = (p: number) => {
+  // Como 'category' en la URL es un ID (ej: "3"), 
+  // buscamos el objeto real en el array para mostrar su nombre en la UI ("Filtrando por: Gastronomía")
+  const activeCategoryObj = categories.find((c) => String(c.id) === category);
+  const activeCategoryName = activeCategoryObj ? activeCategoryObj.name : null;
+
+  // Constructor maestro de URLs para manejar estados complejos de filtrado
+  const buildFilterUrl = (p: number, categoryId?: string | null) => {
     const q = new URLSearchParams();
     q.set("page", String(p));
+
+    // Mantenemos la búsqueda si existe
     if (search) q.set("search", search);
+
+    // Lógica robusta: Si nos pasan null, borramos la categoría (botón "Todos").
+    // Si nos pasan un ID, lo usamos. Si no nos pasan este argumento, mantenemos el ID actual.
+    if (categoryId !== null) {
+      const catToUse = categoryId !== undefined ? categoryId : category;
+      if (catToUse) q.set("category", catToUse);
+    }
+
     return `/?${q.toString()}`;
   };
 
@@ -73,7 +132,7 @@ export default async function Home({
           }}
         />
 
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 py-20 sm:py-28 text-center">
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-8 py-16 sm:py-24 text-center">
           <span className="inline-block bg-[#f59e0b]/15 text-[#f59e0b] text-xs font-bold uppercase tracking-widest px-4 py-1.5 rounded-full mb-6 border border-[#f59e0b]/30">
             Santiago de Cali, Colombia
           </span>
@@ -85,18 +144,54 @@ export default async function Home({
 
           <p className="text-white/60 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed">
             Explora los sitios turísticos más emblemáticos de la Sucursal del
-            Cielo. Cultura, naturaleza, historia y sabor en un solo lugar.
+            Cielo. Cultura, naturaleza e historia en un solo lugar.
           </p>
 
-          <div className="max-w-xl mx-auto">
+          <div className="max-w-xl mx-auto mb-12">
             <SearchBar />
           </div>
 
-          <div className="flex items-center justify-center gap-8 mt-12 flex-wrap">
+          {/* ── FILTRO DE CATEGORÍAS (DINÁMICO POR ID) ── */}
+          <div className="relative max-w-7xl mx-auto px-4 sm:px-8 pb-12">
+            <div className="flex flex-wrap justify-center gap-3">
+              {/* Botón "Todos" pasa 'null' para limpiar la categoría de la URL */}
+              <Link
+                href={buildFilterUrl(1, null)}
+                className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${!category
+                  ? "bg-[#c0392b] text-white shadow-lg scale-105"
+                  : "bg-white/10 text-white/70 hover:bg-white/20"
+                  }`}
+              >
+                Todos
+              </Link>
+
+              {/* Iteramos sobre las categorías de la API */}
+              {categories.map((cat: Category) => {
+                // Verificamos si esta categoría es la activa (comparando IDs como strings)
+                const isActive = category === String(cat.id);
+
+                return (
+                  <Link
+                    key={cat.id}
+                    href={buildFilterUrl(1, String(cat.id))} // Pasamos el ID a la URL
+                    className={`px-5 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-2 ${isActive
+                      ? "bg-[#c0392b] text-white shadow-lg scale-105 border border-white/20"
+                      : "bg-white/10 text-white/70 hover:bg-white/20 border border-transparent"
+                      }`}
+                  >
+                    <span>{categoryIcons[cat.name] || categoryIcons.default}</span>
+                    {cat.name}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-8 mt-12 flex-wrap border-t border-white/10 pt-8">
             {[
-              { valor: meta ? String(meta.total) : String(spots.length), label: "Sitios turísticos" },
-              { valor: "1 ciudad", label: "Santiago de Cali" },
-              { valor: "100%", label: "Gratis para explorar" },
+              { valor: meta ? String(meta.total) : String(spots.length), label: "Sitios encontrados" },
+              { valor: "Cali", label: "Ubicación" },
+              { valor: "Gratis", label: "Acceso" },
             ].map((stat) => (
               <div key={stat.label} className="text-center">
                 <p className="text-[#f59e0b] text-2xl font-bold">{stat.valor}</p>
@@ -107,20 +202,26 @@ export default async function Home({
         </div>
       </section>
 
-      {/* ── RESULTADOS DE BÚSQUEDA ── */}
-      {search && (
+      {/* ── FEEDBACK DE BÚSQUEDA / FILTRO ── */}
+      {(search || category) && (
         <div className="max-w-7xl mx-auto px-4 sm:px-8 pt-8">
-          <div className="flex items-center gap-3">
-            <span className="text-[#1c1917] text-sm font-medium">
-              Resultados para{" "}
-              <span className="text-[#c0392b] font-bold">"{search}"</span>
-              {" "}—{" "}
-              <span className="text-[#7c3a2e]">
-                {meta?.total ?? spots.length} sitio{(meta?.total ?? spots.length) !== 1 ? "s" : ""} encontrado{(meta?.total ?? spots.length) !== 1 ? "s" : ""}
-              </span>
+          <div className="flex items-center gap-3 bg-white p-4 rounded-xl border border-[#fde8e8] shadow-sm">
+            <span className="text-[#1c1917] text-sm">
+              Filtrando por:{" "}
+              {/* Mostramos el nombre, no el ID, para mejor UX */}
+              {activeCategoryName && (
+                <span className="bg-[#fde8e8] text-[#c0392b] px-2 py-0.5 rounded font-bold mx-1">
+                  {activeCategoryName}
+                </span>
+              )}
+              {search && (
+                <>
+                  Búsqueda: <span className="bg-[#fde8e8] text-[#c0392b] px-2 py-0.5 rounded font-bold mx-1">"{search}"</span>
+                </>
+              )}
             </span>
-            <Link href="/" className="text-xs text-[#c0392b] hover:underline ml-auto">
-              Limpiar búsqueda ×
+            <Link href={buildFilterUrl(1, null)} className="text-xs text-[#c0392b] font-bold hover:underline ml-auto">
+              Limpiar filtros ×
             </Link>
           </div>
         </div>
@@ -128,195 +229,103 @@ export default async function Home({
 
       {/* ── GRILLA DE SITIOS ── */}
       <section className="max-w-7xl mx-auto px-4 sm:px-8 py-12">
-
-        {/* Encabezado de sección */}
-        {!search && (
-          <div className="flex items-center gap-4 mb-8">
-            <div>
-              <h2 className="text-2xl font-bold text-[#1c1917]">Todos los sitios</h2>
-              <p className="text-[#7c3a2e] text-sm mt-0.5">
-                Haz clic en cualquier lugar para ver más detalles
-              </p>
-            </div>
-            <div className="ml-auto h-px flex-1 bg-[#fde8e8]" />
-            <span className="text-[#c0392b] text-sm font-semibold bg-[#fde8e8] px-3 py-1 rounded-full">
-              {meta?.total ?? spots.length} sitios
-            </span>
+        {spots.length === 0 ? (
+          <div className="text-center py-20 bg-white rounded-3xl border border-dashed border-[#c4908a]/30">
+            <span className="text-6xl block mb-4">📍</span>
+            <h3 className="text-xl font-bold text-[#1c1917] mb-2">No hay sitios disponibles</h3>
+            <p className="text-[#7c3a2e] text-sm mb-6">Parece que no hay resultados para esta selección.</p>
+            <Link href="/" className="bg-[#c0392b] text-white px-6 py-2 rounded-full text-sm font-bold">Ver todo</Link>
           </div>
-        )}
-
-        {/* Sin resultados */}
-        {spots.length === 0 && (
-          <div className="text-center py-24">
-            <span className="text-6xl block mb-4">🔍</span>
-            <h3 className="text-xl font-bold text-[#1c1917] mb-2">
-              No encontramos resultados
-            </h3>
-            <p className="text-[#7c3a2e] text-sm mb-6">
-              Intenta con otro término de búsqueda.
-            </p>
-            <Link
-              href="/"
-              className="inline-block bg-[#c0392b] hover:bg-[#a93226] text-white text-sm font-semibold px-6 py-2.5 rounded-full transition-colors"
-            >
-              Ver todos los sitios
-            </Link>
-          </div>
-        )}
-
-        {/* Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {spots.map((spot) => (
-            <Link
-              key={spot.id}
-              href={`/spots/${spot.id}`}
-              className="group bg-white rounded-2xl overflow-hidden border border-[#fde8e8] hover:border-[#c0392b]/40 hover:shadow-xl transition-all duration-300 flex flex-col"
-            >
-              <div className="relative overflow-hidden h-52 bg-[#fde8e8]">
-                {spot.imageUrl ? (
-                  <img
-                    src={spot.imageUrl}
-                    alt={spot.name}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#c4908a]">
-                    <span className="text-4xl">📷</span>
-                    <span className="text-xs">Sin imagen disponible</span>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {spots.map((spot) => (
+              <Link
+                key={spot.id}
+                href={`/spots/${spot.id}`}
+                className="group bg-white rounded-2xl overflow-hidden border border-[#fde8e8] hover:border-[#c0392b]/40 hover:shadow-2xl transition-all duration-300 flex flex-col"
+              >
+                <div className="relative h-56 bg-[#fde8e8] overflow-hidden">
+                  {spot.imageUrl ? (
+                    <img
+                      src={spot.imageUrl}
+                      alt={spot.name}
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[#c4908a]">📷</div>
+                  )}
+                  <div className="absolute top-4 left-4">
+                    <span className="bg-[#1c1917]/80 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-tighter">
+                      {spot.categories?.[0]?.name || "General"}
+                    </span>
                   </div>
-                )}
-                <div className="absolute inset-0 bg-[#c0392b]/0 group-hover:bg-[#c0392b]/10 transition-colors duration-300" />
-              </div>
-
-              <div className="p-5 flex flex-col flex-1">
-                <h2 className="text-lg font-bold text-[#1c1917] mb-2 group-hover:text-[#c0392b] transition-colors leading-snug">
-                  {spot.name}
-                </h2>
-                <p className="text-[#5a3e3b] text-sm leading-relaxed line-clamp-3 flex-1">
-                  {spot.description}
-                </p>
-                <div className="mt-4 flex items-center justify-between">
-                  <span className="text-[#c0392b] text-sm font-semibold group-hover:underline">
-                    Ver detalles →
-                  </span>
-                  <span className="text-[#f59e0b] text-base">★★★★★</span>
                 </div>
-              </div>
-            </Link>
-          ))}
-        </div>
+
+                <div className="p-6">
+                  <h2 className="text-xl font-bold text-[#1c1917] mb-2 group-hover:text-[#c0392b] transition-colors">
+                    {spot.name}
+                  </h2>
+                  <p className="text-[#5a3e3b] text-sm line-clamp-2 mb-4">{spot.description}</p>
+                  <div className="flex items-center justify-between pt-4 border-t border-[#fde8e8]">
+                    <span className="text-[#c0392b] text-xs font-bold uppercase tracking-wider">Explorar sitio</span>
+                    <span className="text-[#f59e0b]">★★★★★</span>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* ── PAGINACIÓN ── */}
         {meta && meta.lastPage > 1 && (
-          <div className="mt-12 flex flex-col sm:flex-row items-center justify-between gap-4">
-
-            {/* Info */}
+          <div className="mt-16 flex flex-col sm:flex-row items-center justify-between gap-6 bg-white p-6 rounded-2xl border border-[#fde8e8]">
             <p className="text-sm text-[#7c3a2e]">
-              Página{" "}
-              <span className="font-bold text-[#1c1917]">{meta.currentPage}</span>
-              {" "}de{" "}
-              <span className="font-bold text-[#1c1917]">{meta.lastPage}</span>
-              {" "}— {meta.total} sitios en total
+              Página <span className="font-bold text-[#1c1917]">{meta.currentPage}</span> de {meta.lastPage}
             </p>
 
-            {/* Controles */}
             <div className="flex items-center gap-2">
+              <Link
+                href={buildFilterUrl(meta.currentPage - 1)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${meta.currentPage > 1 ? "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5]" : "opacity-0 pointer-events-none"
+                  }`}
+              >
+                Anterior
+              </Link>
 
-              {/* Anterior */}
-              {meta.currentPage > 1 ? (
-                <Link
-                  href={buildPageUrl(meta.currentPage - 1)}
-                  className="px-4 py-2 rounded-full border border-[#fde8e8] bg-white text-[#1c1917] text-sm font-semibold hover:bg-[#fff5f5] hover:border-[#c0392b]/30 transition-all"
-                >
-                  ← Anterior
-                </Link>
-              ) : (
-                <span className="px-4 py-2 rounded-full border border-[#fde8e8] bg-[#fff9f9] text-[#c4908a] text-sm font-semibold cursor-not-allowed">
-                  ← Anterior
-                </span>
-              )}
-
-              {/* Números de página */}
-              <div className="flex items-center gap-1">
-                {Array.from({ length: meta.lastPage }, (_, i) => i + 1).map((p) => {
-                  const isActive = p === meta.currentPage;
-                  // Mostrar: primera, última, actual y sus vecinas
-                  const show =
-                    p === 1 ||
-                    p === meta.lastPage ||
-                    Math.abs(p - meta.currentPage) <= 1;
-
-                  // Puntos suspensivos
-                  const showDotsBefore =
-                    p === meta.currentPage - 2 && meta.currentPage - 2 > 1;
-                  const showDotsAfter =
-                    p === meta.currentPage + 2 && meta.currentPage + 2 < meta.lastPage;
-
-                  if (showDotsBefore || showDotsAfter) {
-                    return (
-                      <span key={p} className="text-[#c4908a] text-sm px-1">
-                        …
-                      </span>
-                    );
-                  }
-
-                  if (!show) return null;
-
-                  return (
-                    <Link
-                      key={p}
-                      href={buildPageUrl(p)}
-                      className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${isActive
-                        ? "bg-[#c0392b] text-white shadow-sm"
-                        : "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5] hover:border-[#c0392b]/30"
-                        }`}
-                    >
-                      {p}
-                    </Link>
-                  );
-                })}
+              <div className="flex gap-1">
+                {Array.from({ length: meta.lastPage }, (_, i) => i + 1).map((p) => (
+                  <Link
+                    key={p}
+                    href={buildFilterUrl(p)}
+                    className={`w-10 h-10 rounded-lg flex items-center justify-center text-sm font-bold transition-all ${p === meta.currentPage ? "bg-[#c0392b] text-white shadow-md" : "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5]"
+                      }`}
+                  >
+                    {p}
+                  </Link>
+                ))}
               </div>
 
-              {/* Siguiente */}
-              {meta.currentPage < meta.lastPage ? (
-                <Link
-                  href={buildPageUrl(meta.currentPage + 1)}
-                  className="px-4 py-2 rounded-full border border-[#fde8e8] bg-white text-[#1c1917] text-sm font-semibold hover:bg-[#fff5f5] hover:border-[#c0392b]/30 transition-all"
-                >
-                  Siguiente →
-                </Link>
-              ) : (
-                <span className="px-4 py-2 rounded-full border border-[#fde8e8] bg-[#fff9f9] text-[#c4908a] text-sm font-semibold cursor-not-allowed">
-                  Siguiente →
-                </span>
-              )}
+              <Link
+                href={buildFilterUrl(meta.currentPage + 1)}
+                className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${meta.currentPage < meta.lastPage ? "bg-white border border-[#fde8e8] text-[#1c1917] hover:bg-[#fff5f5]" : "opacity-0 pointer-events-none"
+                  }`}
+              >
+                Siguiente
+              </Link>
             </div>
           </div>
         )}
       </section>
 
-      {/* ── BANNER CTA ── */}
-      <section className="bg-[#1c1917] mt-8 py-16 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <h3 className="text-2xl sm:text-3xl font-bold text-white mb-3">
-            ¿Conoces un sitio que no está aquí?
-          </h3>
-          <p className="text-white/50 mb-8 text-sm">
-            Ayúdanos a crecer el directorio turístico de Cali registrándote y
-            añadiendo nuevos lugares.
-          </p>
-          <Link
-            href="/register"
-            className="inline-block bg-[#c0392b] hover:bg-[#a93226] text-white font-semibold px-8 py-3 rounded-full transition-colors mr-3"
-          >
-            Registrarse
-          </Link>
-          <Link
-            href="/login"
-            className="inline-block border border-white/20 hover:border-white/60 text-white/70 hover:text-white font-semibold px-8 py-3 rounded-full transition-all"
-          >
-            Ingresar
-          </Link>
+      {/* ── FOOTER CTA ── */}
+      <section className="bg-[#1c1917] py-20 px-4">
+        <div className="max-w-4xl mx-auto text-center">
+          <h2 className="text-3xl font-bold text-white mb-6">¿Tu sitio favorito no está aquí?</h2>
+          <p className="text-white/50 mb-10 max-w-lg mx-auto">Únete a la comunidad de CaliTur y ayuda a otros viajeros a descubrir los rincones ocultos de la ciudad.</p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <Link href="/register" className="bg-[#c0392b] text-white px-10 py-4 rounded-full font-bold hover:bg-[#a93226] transition-all">Crear cuenta</Link>
+            <Link href="/login" className="bg-white/5 text-white border border-white/10 px-10 py-4 rounded-full font-bold hover:bg-white/10 transition-all">Iniciar Sesión</Link>
+          </div>
         </div>
       </section>
     </div>

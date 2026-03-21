@@ -9,6 +9,8 @@ export default function NuevoSitioPage() {
 
     const [name, setName] = useState("");
     const [description, setDescription] = useState("");
+    const [latitude, setLatitude] = useState("");
+    const [longitude, setLongitude] = useState("");
     const [image, setImage] = useState<File | null>(null);
     const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
@@ -41,7 +43,12 @@ export default function NuevoSitioPage() {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify({ name, description }),
+                body: JSON.stringify({
+                    name,
+                    description,
+                    latitude: latitude ? parseFloat(latitude) : null,
+                    longitude: longitude ? parseFloat(longitude) : null,
+                }),
             });
 
             if (!createRes.ok) {
@@ -156,6 +163,36 @@ export default function NuevoSitioPage() {
                             className="w-full px-4 py-3 rounded-xl border border-[#fde8e8] bg-[#fff9f9] text-[#1c1917] placeholder-[#c4908a] focus:outline-none focus:ring-2 focus:ring-[#c0392b]/30 focus:border-[#c0392b] transition-all text-sm resize-none"
                         />
                         <p className="text-xs text-[#c4908a] mt-1 text-right">{description.length} caracteres</p>
+                    </div>
+
+                    {/* Latitud y Longitud */}
+                    <div className="flex gap-4">
+                        <div className="flex-1">
+                            <label className="block text-sm font-semibold text-[#1c1917] mb-2">
+                                Latitud
+                            </label>
+                            <input
+                                type="number"
+                                step="any"
+                                value={latitude}
+                                onChange={(e) => setLatitude(e.target.value)}
+                                placeholder="Ej: 3.4516"
+                                className="w-full px-4 py-3 rounded-xl border border-[#fde8e8] bg-[#fff9f9] text-[#1c1917] placeholder-[#c4908a] focus:outline-none focus:ring-2 focus:ring-[#c0392b]/30 focus:border-[#c0392b] transition-all text-sm"
+                            />
+                        </div>
+                        <div className="flex-1">
+                            <label className="block text-sm font-semibold text-[#1c1917] mb-2">
+                                Longitud
+                            </label>
+                            <input
+                                type="number"
+                                step="any"
+                                value={longitude}
+                                onChange={(e) => setLongitude(e.target.value)}
+                                placeholder="Ej: -76.5320"
+                                className="w-full px-4 py-3 rounded-xl border border-[#fde8e8] bg-[#fff9f9] text-[#1c1917] placeholder-[#c4908a] focus:outline-none focus:ring-2 focus:ring-[#c0392b]/30 focus:border-[#c0392b] transition-all text-sm"
+                            />
+                        </div>
                     </div>
 
                     {/* Foto */}
